@@ -1,0 +1,2 @@
+class SpeedError(Exception):
+    pass
