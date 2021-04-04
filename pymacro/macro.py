@@ -172,12 +172,12 @@ class Macro:
             raise ValueError("Macro repeat value should be positive, or 0 to repeat forever.")
 
         def _runner():
-            if delay > 0:
-                time.sleep(delay)
             for _task in self.tasks:
                 _task()
                 if speed is not None:
                     time.sleep(speed)
+            if delay > 0:
+                time.sleep(delay)
 
         if wait > 0:
             time.sleep(wait)
