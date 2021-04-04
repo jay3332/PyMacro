@@ -18,6 +18,11 @@ def _calc_coordinates(coords):
     return coords
 
 
+class _EndRunner:
+    def __init__(self, condition, wait):
+        self.condition, self.wait = condition, wait
+
+
 class Macro:
     def __init__(self):
         self.tasks = []
@@ -146,8 +151,12 @@ class Macro:
                 if interval > 0:
                     time.sleep(interval)
 
-
         self.tasks.append(_wrapper)
+        return self
+
+
+    def end(self, condition=True, wait=0.):
+        self.tasks.append(_EndRunner(condition, wait))
         return self
 
 
@@ -155,7 +164,8 @@ class Macro:
             repeat: int = 1,
             wait: typing.Union[float, int] = 0.,
             delay: typing.Union[float, int] = 0.,
-            speed: typing.Union[float, int] = None):
+            speed: typing.Union[float, int] = None,
+            suppress: bool = True):
         """
         Runs the macro in it's current state.
         """
@@ -173,25 +183,51 @@ class Macro:
 
         def _runner():
             for _task in self.tasks:
-                _task()
+                if not isinstance(_task, _EndRunner):
+                    _task()
+                else:
+                    if _task.condition:
+                        if _task.wait > 0:
+                            time.sleep(wait)
+                        raise TaskEndError("Task ended early.")
                 if speed is not None:
                     time.sleep(speed)
             if delay > 0:
                 time.sleep(delay)
 
-        if wait > 0:
-            time.sleep(wait)
-        if repeat == 1:
-            _runner()
-        elif repeat > 1:
-            for _ in range(repeat):
+        try:
+            if wait > 0:
+                time.sleep(wait)
+            if repeat == 1:
                 _runner()
-        elif repeat <= 0:
-            while True:
-                _runner()
+            elif repeat > 1:
+                for _ in range(repeat):
+                    _runner()
+            elif repeat <= 0:
+                while True:
+                    _runner()
+        except Exception as e:
+            if suppress:
+                return self
+            raise TaskException(e)
         return self
 
     async def async_run(self, *args, **kwargs):
         _loop = asyncio.get_event_loop()
-        _partial = partial(self.run, args, kwargs)
+        _partial = partial(self.run, *args, **kwargs)
         return await _loop.run_in_executor(None, _partial)
+
+    def __iter__(self):
+        return iter(self.tasks)
+
+    def __add__(self, other):
+        if isinstance(other, Macro):
+            return [*self.tasks, *other.tasks]
+
+    def __iadd__(self, other):
+        if isinstance(other, Macro):
+            self.tasks.extend(other.tasks)
+            return self.tasks
+
+    def __call__(self, *args, **kwargs):
+        self.run(*args, **kwargs)
