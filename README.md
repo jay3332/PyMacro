@@ -1,4 +1,6 @@
 # pymacro
+[![Image](https://img.shields.io/pypi/v/pymacro)](https://pypi.org/project/pymacro/)
+
 PyMacro is a partial wrapper around [pyautogui](https://pypi.org/project/PyAutoGUI/). PyMacro can automate your tasks all inside of Python - give it a try!
 ## Features
 - Object oriented
@@ -72,7 +74,9 @@ macro.execute(fn, times=5)  # execute this function 5 times
 
 macro()
 ```
-### Multiple Macros at once with asyncio
+## Multi-tasking
+Because PyMacro has asynchrounous support, it is possible to run two macros at once in the same program.
+### Multiple Macros at once (asyncio)
 ```py
 import pymacro
 import asyncio
@@ -90,6 +94,28 @@ macro2.execute(print_one_to_ten)
 loop = asyncio.get_event_loop()
 loop.create_task(macro1.async_run())
 loop.create_task(macro2.async_run())
+```
+### Multiple Macros at once (threading)
+⚠ This is not recommended - use asyncio if possible.
+```py 
+import pymacro
+import threading
+
+macro1 = pymacro.Macro()
+macro2 = pymacro.Macro()
+
+def print_one_to_ten():
+    for i in range(1, 11):
+        print(i)
+
+macro1.execute(print_one_to_ten)
+macro2.execute(print_one_to_ten)
+
+runner1 = threading.Thread(target=macro1.run)
+runner2 = threading.Thread(target=macro2.run)
+
+runner1.start()
+runner2.start()
 ```
 ## Tips
 ### Special Functions
